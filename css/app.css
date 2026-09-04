@@ -1,0 +1,235 @@
+/* app.css — shared styles for the offline QR file-transfer app.
+   Pastel theme + landscape (full-screen, two-column) layout. */
+
+:root {
+  /* Pastel palette */
+  --bg: #f4f1fb;          /* soft lavender page */
+  --bg-2: #eae6f7;
+  --panel: #ffffff;       /* clean white cards */
+  --panel-2: #f3f0fb;     /* inset controls */
+  --text: #40384f;        /* muted plum ink */
+  --muted: #8b8397;
+  --accent: #a9b8ff;      /* pastel periwinkle */
+  --accent-ink: #5a6bd8;  /* readable text on accent */
+  --mint: #a8e6cf;        /* pastel mint (success) */
+  --mint-ink: #2f9e79;
+  --peach: #ffd6a5;       /* pastel peach (warn) */
+  --peach-ink: #c9852f;
+  --rose: #ffb3c1;        /* pastel rose (error) */
+  --rose-ink: #d65a75;
+  --border: #e4def2;
+  --radius: 16px;
+  --shadow: 0 6px 20px rgba(120, 100, 170, 0.10);
+  --mono: ui-monospace, "Cascadia Code", "Consolas", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
+  color: var(--text);
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ---- Top bar ---- */
+header.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex: 0 0 auto;
+}
+header.topbar h1 { font-size: 1.1rem; margin: 0; font-weight: 700; }
+header.topbar .spacer { flex: 1; }
+header.topbar a {
+  color: var(--accent-ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+header.topbar a:hover { background: var(--panel-2); }
+
+.offline-badge {
+  font-size: 0.72rem;
+  color: var(--mint-ink);
+  background: var(--mint);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* ---- Landscape layout: fills the viewport, two columns ---- */
+main {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 22px 28px;
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+/* Sender/receiver pages use a controls column + a big stage column. */
+main.landscape {
+  grid-template-columns: minmax(360px, 1.1fr) minmax(420px, 1.4fr);
+  align-items: start;
+  min-height: 0;
+}
+.col { display: grid; gap: 22px; align-content: start; }
+.col.stage { position: sticky; top: 88px; }
+
+/* ---- Panels ---- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+.panel h2 { margin: 0 0 14px; font-size: 1.02rem; font-weight: 700; }
+.panel h3 { margin: 18px 0 8px; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.grow { flex: 1; min-width: 180px; }
+
+label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 6px; font-weight: 500; }
+
+input[type="text"], input[type="password"], input[type="number"], select {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 0.95rem;
+}
+input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+input[type="range"] { width: 100%; accent-color: var(--accent-ink); }
+
+button {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.05s;
+}
+button:hover { filter: brightness(0.97); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+button.ghost { background: transparent; color: var(--accent-ink); border: 1px solid var(--accent); }
+
+/* ---- Drop zone ---- */
+.dropzone {
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+  background: var(--panel-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone.drag { border-color: var(--accent-ink); background: #eef1ff; }
+.dropzone strong { color: var(--text); }
+
+/* ---- QR / camera stage ---- */
+.qr-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#qrCanvas {
+  background: #fff;
+  border-radius: var(--radius);
+  max-width: 100%;
+  height: auto;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+#videoWrap {
+  background: #000;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  width: 100%;
+}
+#video { width: 100%; display: block; border-radius: var(--radius); }
+
+/* ---- Chunk grid ---- */
+.chunkgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12px, 1fr));
+  gap: 3px;
+  margin-top: 12px;
+}
+.chunkgrid .cell { aspect-ratio: 1; background: var(--panel-2); border-radius: 3px; }
+.chunkgrid .cell.got { background: var(--mint); }
+
+/* ---- Progress ---- */
+.progress { height: 12px; background: var(--panel-2); border-radius: 999px; overflow: hidden; width: 100%; }
+.progress > span { display: block; height: 100%; width: 0%; background: var(--mint); transition: width 0.2s; }
+
+.stat { font-family: var(--mono); font-size: 0.9rem; }
+.stat b { color: var(--accent-ink); }
+
+.status {
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.status.ok { background: var(--mint); border-color: var(--mint); color: var(--mint-ink); }
+.status.err { background: var(--rose); border-color: var(--rose); color: var(--rose-ink); }
+.status.warn { background: var(--peach); border-color: var(--peach); color: var(--peach-ink); }
+
+.muted { color: var(--muted); }
+.hidden { display: none !important; }
+
+.tuning-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.value-tag { font-family: var(--mono); color: var(--accent-ink); font-size: 0.85rem; font-weight: 700; }
+
+/* ---- Landing cards ---- */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s, transform 0.1s;
+}
+.card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.card .emoji { font-size: 2.2rem; }
+.card h2 { margin: 12px 0 6px; }
+.card p { color: var(--muted); margin: 0; font-size: 0.9rem; }
+
+/* ---- Responsive: stack to single column on narrow screens ---- */
+@media (max-width: 900px) {
+  main.landscape { grid-template-columns: 1fr; }
+  .col.stage { position: static; }
+}
+@media (max-width: 640px) {
+  main { padding: 14px; }
+  .panel { padding: 16px; }
+  header.topbar { padding: 12px 16px; }
+}

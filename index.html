@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline QR File Transfer</title>
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+<header class="topbar">
+    <h1>🔳 Offline QR File Transfer</h1>
+    <span class="offline-badge">100% offline · no server · no internet</span>
+</header>
+
+<main>
+    <section class="panel">
+        <h2>Move a file between two devices using only the screen &amp; a camera</h2>
+        <p class="muted">
+            The <strong>sender</strong> compresses, encrypts, and displays your file as a rapid
+            animated QR sequence. The <strong>receiver</strong> scans it with a camera, reassembles,
+            decrypts, and saves the file — all in the browser, with no network access at any point.
+        </p>
+    </section>
+
+    <div class="cards">
+        <a class="card" href="sender.html">
+            <div class="emoji">📤</div>
+            <h2>Sender</h2>
+            <p>Upload a file, set a passphrase, tune the QR density/FPS, and broadcast the animated QR.</p>
+        </a>
+        <a class="card" href="receiver.html">
+            <div class="emoji">📥</div>
+            <h2>Receiver</h2>
+            <p>Open the camera, scan the frames until complete, enter the passphrase, and save the file.</p>
+        </a>
+    </div>
+
+    <section class="panel">
+        <h2>How it works</h2>
+        <ol class="muted">
+            <li>File bytes → <b>gzip</b> → <b>AES-GCM</b> encrypt (key from your passphrase via PBKDF2).</li>
+            <li>Ciphertext is split into fixed-size chunks; each becomes one QR frame (raw binary byte mode).</li>
+            <li>A repeating <b>header frame</b> carries the manifest (filename, chunk count, salt, IV, SHA-256).</li>
+            <li>The sender loops the frames; the receiver collects missing indices until all are captured.</li>
+            <li>The receiver verifies SHA-256, decrypts, decompresses, and downloads the original file.</li>
+        </ol>
+        <p class="muted" style="font-size:0.85rem">
+            Same passphrase on both sides. Share it out of band (in person, etc.) — it is never transmitted.
+        </p>
+    </section>
+</main>
+</body>
+</html>

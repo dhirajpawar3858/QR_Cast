@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Receiver — Offline QR File Transfer</title>
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+<header class="topbar">
+    <h1>📥 Receiver</h1>
+    <span class="offline-badge">100% offline</span>
+    <span class="spacer"></span>
+    <a href="index.html">Home</a>
+    <a href="sender.html">Sender →</a>
+</header>
+
+<main class="landscape">
+    <!-- LEFT: camera stage (sticky, fills the screen) -->
+    <div class="col stage">
+        <section class="panel">
+            <h2>1 · Scan</h2>
+            <div class="row" style="margin-bottom:12px">
+                <button id="startCam">▶ Start camera</button>
+                <button id="stopCam" class="secondary" disabled>■ Stop camera</button>
+                <div class="grow">
+                    <select id="cameraSelect"></select>
+                </div>
+            </div>
+            <div id="videoWrap">
+                <video id="video" playsinline muted></video>
+            </div>
+            <canvas id="scanCanvas" class="hidden"></canvas>
+            <div id="camStatus" class="status warn" style="margin-top:12px">Camera not started.</div>
+        </section>
+    </div>
+
+    <!-- RIGHT: progress + reconstruct -->
+    <div class="col">
+        <!-- 2. Progress -->
+        <section class="panel">
+            <h2>2 · Progress</h2>
+            <div id="manifestInfo" class="stat muted">Waiting for the header frame from the sender…</div>
+            <div class="progress" style="margin-top:12px"><span id="recvBar"></span></div>
+            <div id="recvStat" class="stat muted" style="margin-top:8px"></div>
+            <div id="chunkGrid" class="chunkgrid"></div>
+        </section>
+
+        <!-- 3. Reconstruct -->
+        <section class="panel">
+            <h2>3 · Reconstruct &amp; save</h2>
+            <div class="row">
+                <div class="grow">
+                    <input id="passphrase" type="password" placeholder="Passphrase (same as the sender used)" />
+                </div>
+                <button id="togglePass" class="secondary" type="button">Show</button>
+                <button id="saveBtn" disabled>💾 Decrypt &amp; save</button>
+            </div>
+            <div id="saveStatus" class="status hidden" style="margin-top:12px"></div>
+        </section>
+    </div>
+</main>
+
+<!-- Vendored libraries (offline) -->
+<script src="vendor/jsQR.js"></script>
+<script src="app/packet.js"></script>
+<script src="app/crypto.js"></script>
+<script src="app/compress.js"></script>
+<script src="app/receiver.js"></script>
+</body>
+</html>
