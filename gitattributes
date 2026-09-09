@@ -1,0 +1,13 @@
+# Keep vendored/minified libraries byte-for-byte as committed.
+# Prevents Git from re-encoding or normalizing line endings, which can
+# corrupt minified files (the cause of the "Invalid or unexpected token"
+# error seen when hosting on GitHub Pages).
+vendor/** -text
+*.min.js -text
+
+# Normalize line endings for our own source to LF.
+*.html text eol=lf
+*.css  text eol=lf
+app/*.js text eol=lf
+*.md   text eol=lf
+
