@@ -42,6 +42,14 @@
     qrCanvas: $('qrCanvas'),
     frameLabel: $('frameLabel'),
     frameBar: $('frameBar'),
+    // Chunk selection grid
+    chunkPanel: $('chunkPanel'),
+    chunkGrid: $('chunkGrid'),
+    chunkGridWrap: $('chunkGridWrap'),
+    marquee: $('marquee'),
+    selectModeChk: $('selectModeChk'),
+    clearSelBtn: $('clearSelBtn'),
+    chunkStat: $('chunkStat'),
   };
 
   let fileBytes = null;     // Uint8Array of the selected file
@@ -49,6 +57,12 @@
   let frames = [];          // Array<Uint8Array> — the full broadcast sequence
   let playIndex = 0;
   let playTimer = null;
+  // Per-chunk DATA frames + the HEADER frame are kept around after build so the
+  // broadcast sequence can be rebuilt on the fly when the user marks chunks as
+  // already received (acked). Only non-acked chunks get animated.
+  let dataFrames = [];      // Array<Uint8Array>, index === chunkIndex
+  let headerFrame = null;   // the manifest frame (re-inserted periodically)
+  let ackedChunks = new Set(); // chunk indices the receiver already has
   // Rendering is locked to ONE QR version + pixel width for the whole
   // sequence so frames don't visibly grow/shrink ("blink") between the small
   // HEADER frame and the larger DATA frames. Computed once in buildFrames().
@@ -115,7 +129,7 @@
 
   async function loadFile(file) {
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       setStatus(el.fileInfo, `File is ${fmtBytes(file.size)} — max supported is 2 MB.`, 'err');
       fileBytes = null;
       el.startBtn.disabled = true;
@@ -154,7 +168,7 @@
     // 3. Slice into DATA frames
     const usable = usablePayload();
     const transferId = (window.Crypto2.randomBytes(3).reduce((a, b) => (a << 8) | b, 0)) >>> 0;
-    const dataFrames = [];
+    dataFrames = [];
     let idx = 0;
     for (let off = 0; off < cipher.length; off += usable) {
       const slice = cipher.subarray(off, Math.min(off + usable, cipher.length));
@@ -164,7 +178,7 @@
     const totalChunks = dataFrames.length;
 
     // 4. HEADER frame (manifest)
-    const header = window.Packet.encodeHeader({
+    headerFrame = window.Packet.encodeHeader({
       transferId,
       totalChunks,
       cipherLen: cipher.length,
@@ -175,17 +189,16 @@
       filename: fileName,
     });
 
-    // 5. Interleave: HEADER first, then HEADER every 15 data frames.
-    const seq = [header];
-    for (let i = 0; i < dataFrames.length; i++) {
-      seq.push(dataFrames[i]);
-      if ((i + 1) % 15 === 0 && i + 1 < dataFrames.length) seq.push(header);
-    }
+    // 5. Fresh transfer: nothing acked yet. Build the initial sequence
+    //    (all chunks) and the clickable grid.
+    ackedChunks = new Set();
+    buildSenderGrid(totalChunks);
+    rebuildSequence();
 
     // 6. Lock the QR version so EVERY frame renders at the same grid/pixel
     //    size (no blinking). The largest frame needs the biggest version;
     //    ask node-qrcode which version fits it, then reuse that for all frames.
-    const largest = seq.reduce((a, b) => (b.length > a.length ? b : a), seq[0]);
+    const largest = frames.reduce((a, b) => (b.length > a.length ? b : a), frames[0]);
     const probe = QRCode.create([{ data: largest, mode: 'byte' }],
       { errorCorrectionLevel: el.ecc.value });
     renderVersion = probe.version;
@@ -193,7 +206,159 @@
     const margin = 2;
     renderWidth = (modules + margin * 2) * parseInt(el.scale.value, 10);
 
-    return { seq, totalChunks, cipherLen: cipher.length, gzipUsed };
+    return { totalChunks, cipherLen: cipher.length, gzipUsed };
+  }
+
+  // ---- Broadcast sequence (only the still-missing chunks) ----------------
+
+  /**
+   * Rebuild `frames` from `dataFrames`, skipping any chunk the user has marked
+   * as already received. HEADER is placed first and re-inserted every 15 data
+   * frames so a late-joining receiver still learns the manifest.
+   */
+  function rebuildSequence() {
+    if (!headerFrame) return;
+    const missing = [];
+    for (let i = 0; i < dataFrames.length; i++) {
+      if (!ackedChunks.has(i)) missing.push(dataFrames[i]);
+    }
+    const seq = [headerFrame];
+    for (let i = 0; i < missing.length; i++) {
+      seq.push(missing[i]);
+      if ((i + 1) % 15 === 0 && i + 1 < missing.length) seq.push(headerFrame);
+    }
+    frames = seq;
+    if (playIndex >= frames.length) playIndex = 0;
+    updateChunkStat();
+  }
+
+  function updateChunkStat() {
+    if (!el.chunkStat || dataFrames.length === 0) return;
+    const total = dataFrames.length;
+    const acked = ackedChunks.size;
+    const missing = total - acked;
+    el.chunkStat.textContent =
+      `${missing} of ${total} chunks still broadcasting · ${acked} marked received`;
+    el.chunkStat.classList.remove('muted');
+  }
+
+  // ---- Chunk grid + rectangle (marquee) selection ------------------------
+
+  function buildSenderGrid(n) {
+    el.chunkGrid.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.dataset.idx = i;
+      el.chunkGrid.appendChild(d);
+    }
+    el.chunkPanel.classList.remove('hidden');
+    refreshGridClasses();
+  }
+
+  function refreshGridClasses() {
+    const cells = el.chunkGrid.children;
+    for (let i = 0; i < cells.length; i++) {
+      cells[i].classList.toggle('got', ackedChunks.has(i));
+    }
+  }
+
+  // Pointer-based selection: works for mouse, touch and pen via Pointer Events.
+  let dragging = false;
+  let startX = 0, startY = 0;        // marquee origin, relative to the wrapper
+  let downClientX = 0, downClientY = 0;
+  let addMode = true;                // true = mark received, false = un-mark
+  const CLICK_SLOP = 10;             // px of movement before it counts as a drag
+
+  function localPoint(e) {
+    const r = el.chunkGridWrap.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  // Find the .cell under a screen point. Needed because setPointerCapture makes
+  // pointerup's e.target the grid container, not the cell under the pointer.
+  function cellAtClient(clientX, clientY) {
+    const node = document.elementFromPoint(clientX, clientY);
+    const cell = node && node.closest ? node.closest('.cell') : null;
+    return (cell && cell.parentElement === el.chunkGrid) ? cell : null;
+  }
+
+  function onPointerDown(e) {
+    if (e.button !== undefined && e.button > 0) return; // left/primary/touch only
+    e.preventDefault();
+    try { el.chunkGrid.setPointerCapture(e.pointerId); } catch (_) {}
+    dragging = true;
+    const p = localPoint(e);
+    startX = p.x; startY = p.y;
+    downClientX = e.clientX; downClientY = e.clientY;
+    // add vs. remove: Alt or an unchecked box forces "remove"; otherwise toggle
+    // based on the cell we started on (drag over marked cells un-marks them).
+    const startCell = cellAtClient(e.clientX, e.clientY);
+    const startAcked = startCell ? ackedChunks.has(+startCell.dataset.idx) : false;
+    if (e.altKey || !el.selectModeChk.checked) addMode = false;
+    else addMode = !startAcked;
+    el.chunkGrid.classList.add('selecting');
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const p = localPoint(e);
+    const x = Math.min(startX, p.x), y = Math.min(startY, p.y);
+    const w = Math.abs(p.x - startX), h = Math.abs(p.y - startY);
+    el.marquee.style.left = x + 'px';
+    el.marquee.style.top = y + 'px';
+    el.marquee.style.width = w + 'px';
+    el.marquee.style.height = h + 'px';
+    el.marquee.classList.remove('hidden');
+  }
+
+  function onPointerUp(e) {
+    if (!dragging) return;
+    dragging = false;
+    el.chunkGrid.classList.remove('selecting');
+    el.marquee.classList.add('hidden');
+
+    const moved = Math.hypot(e.clientX - downClientX, e.clientY - downClientY);
+
+    if (moved < CLICK_SLOP) {
+      // Single click / tap: toggle the one cell under the pointer. Use
+      // coordinates (not e.target) because pointer capture makes e.target the grid.
+      const cell = cellAtClient(e.clientX, e.clientY);
+      if (cell) {
+        const idx = +cell.dataset.idx;
+        if (ackedChunks.has(idx)) ackedChunks.delete(idx);
+        else ackedChunks.add(idx);
+      }
+    } else {
+      // Drag rectangle: hit-test every cell against the selection box.
+      const p = localPoint(e);
+      const rect = {
+        left: Math.min(startX, p.x), top: Math.min(startY, p.y),
+        right: Math.max(startX, p.x), bottom: Math.max(startY, p.y),
+      };
+      const wrapRect = el.chunkGridWrap.getBoundingClientRect();
+      const cells = el.chunkGrid.children;
+      for (let i = 0; i < cells.length; i++) {
+        const c = cells[i].getBoundingClientRect();
+        const cl = c.left - wrapRect.left, ct = c.top - wrapRect.top;
+        const cr = c.right - wrapRect.left, cb = c.bottom - wrapRect.top;
+        const hit = cl < rect.right && cr > rect.left &&
+                    ct < rect.bottom && cb > rect.top;
+        if (hit) {
+          if (addMode) ackedChunks.add(i);
+          else ackedChunks.delete(i);
+        }
+      }
+    }
+
+    refreshGridClasses();
+    rebuildSequence();   // re-animate only the still-missing chunks
+  }
+
+  function clearSelection() {
+    ackedChunks = new Set();
+    refreshGridClasses();
+    rebuildSequence();
   }
 
   // ---- Render one frame to the canvas -----------------------------------
@@ -250,7 +415,6 @@
       el.startBtn.disabled = true;
       setStatus(el.genStatus, 'Compressing & encrypting…', 'warn');
       const built = await buildFrames();
-      frames = built.seq;
       playIndex = 0;
       setStatus(el.genStatus,
         `Broadcasting ${built.totalChunks} chunks (${fmtBytes(built.cipherLen)} ciphertext` +
@@ -304,6 +468,17 @@
     stop();
     setStatus(el.genStatus, 'Stopped.', 'warn');
   });
+
+  // Chunk-grid selection: pointer events cover mouse, touch and pen.
+  el.chunkGrid.addEventListener('pointerdown', onPointerDown);
+  el.chunkGrid.addEventListener('pointermove', onPointerMove);
+  el.chunkGrid.addEventListener('pointerup', onPointerUp);
+  el.chunkGrid.addEventListener('pointercancel', () => {
+    dragging = false;
+    el.chunkGrid.classList.remove('selecting');
+    el.marquee.classList.add('hidden');
+  });
+  el.clearSelBtn.addEventListener('click', clearSelection);
 
   // Initial UI state
   updateEstimate();

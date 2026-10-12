@@ -181,6 +181,28 @@ button.ghost { background: transparent; color: var(--accent-ink); border: 1px so
 .chunkgrid .cell { aspect-ratio: 1; background: var(--panel-2); border-radius: 3px; }
 .chunkgrid .cell.got { background: var(--mint); }
 
+/* Sender selectable grid: single tap toggles a cell, drag draws a rectangle.
+   touch-action:none stops a finger-drag from scrolling the page while
+   selecting; user-select:none avoids text-selection flicker mid-drag. */
+#chunkGrid {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#chunkGrid.selecting { cursor: crosshair; }
+#chunkGrid.selecting .cell { cursor: crosshair; }
+
+/* Rubber-band selection rectangle. pointer-events:none so it never blocks the
+   pointerup hit-test underneath it. */
+.marquee {
+  position: absolute;
+  border: 1px solid var(--accent-ink);
+  background: rgba(124, 92, 255, 0.18);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 2px;
+}
+
 /* ---- Progress ---- */
 .progress { height: 12px; background: var(--panel-2); border-radius: 999px; overflow: hidden; width: 100%; }
 .progress > span { display: block; height: 100%; width: 0%; background: var(--mint); transition: width 0.2s; }

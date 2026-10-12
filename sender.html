@@ -1,106 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sender — Offline QR File Transfer</title>
-    <link rel="stylesheet" href="css/app.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sender — Offline QR File Transfer</title>
+  <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
-<header class="topbar">
+  <header class="topbar">
     <h1>📤 Sender</h1>
     <span class="offline-badge">100% offline</span>
     <span class="spacer"></span>
     <a href="index.html">Home</a>
     <a href="receiver.html">Receiver →</a>
-</header>
+  </header>
 
-<main class="landscape">
+  <main class="landscape">
     <!-- LEFT: controls -->
     <div class="col">
-        <!-- 1. File + passphrase -->
-        <section class="panel">
-            <h2>1 · Choose a file &amp; passphrase</h2>
-            <div id="dropzone" class="dropzone">
-                <p><strong>Drag &amp; drop a file here</strong> or click to browse</p>
-                <p class="muted">Any file up to 2 MB (.java, .py, images, …)</p>
-                <input id="fileInput" type="file" class="hidden" />
-            </div>
-            <div id="fileInfo" class="status hidden" style="margin-top:12px"></div>
+      <!-- 1. File + passphrase -->
+      <section class="panel">
+        <h2>1 · Choose a file &amp; passphrase</h2>
+        <div id="dropzone" class="dropzone">
+          <p><strong>Drag &amp; drop a file here</strong> or click to browse</p>
+          <p class="muted">Any file up to 2 MB (.java, .py, images, …)</p>
+          <input id="fileInput" type="file" class="hidden" />
+        </div>
+        <div id="fileInfo" class="status hidden" style="margin-top:12px"></div>
 
-            <h3>Passphrase</h3>
-            <div class="row">
-                <div class="grow">
-                    <input id="passphrase" type="password" placeholder="Passphrase used to encrypt (share it securely, out of band)" />
-                </div>
-                <button id="togglePass" class="secondary" type="button">Show</button>
-            </div>
-            <p class="muted" style="font-size:0.82rem">The receiver must type the exact same passphrase. It never leaves this page.</p>
-        </section>
+        <h3>Passphrase</h3>
+        <div class="row">
+          <div class="grow">
+            <input id="passphrase" type="password" placeholder="Passphrase used to encrypt (share it securely, out of band)" />
+          </div>
+          <button id="togglePass" class="secondary" type="button">Show</button>
+        </div>
+        <p class="muted" style="font-size:0.82rem">The receiver must type the exact same passphrase. It never leaves this page.</p>
+      </section>
 
-        <!-- 2. Tuning -->
-        <section class="panel">
-            <h2>2 · QR density / error-correction / FPS tuning</h2>
-            <div class="tuning-grid">
-                <div>
-                    <label>Payload bytes per frame: <span id="payloadVal" class="value-tag"></span></label>
-                    <input id="payload" type="range" min="200" max="2900" step="50" value="1200" />
-                    <p class="muted" style="font-size:0.78rem">Higher = fewer frames but denser QR (needs a better camera/light).</p>
-                </div>
-                <div>
-                    <label>Error correction</label>
-                    <select id="ecc">
-                        <option value="L">L — 7% (most capacity)</option>
-                        <option value="M" selected>M — 15% (balanced)</option>
-                        <option value="Q">Q — 25% (resilient)</option>
-                        <option value="H">H — 30% (max resilience)</option>
-                    </select>
-                    <p class="muted" style="font-size:0.78rem">Higher ECC survives glare/blur but shrinks capacity.</p>
-                </div>
-                <div>
-                    <label>Animation speed (FPS): <span id="fpsVal" class="value-tag"></span></label>
-                    <input id="fps" type="range" min="1" max="20" step="1" value="8" />
-                    <p class="muted" style="font-size:0.78rem">Lower = easier to scan. Higher = faster but risks missed frames.</p>
-                </div>
-                <div>
-                    <label>QR module size (px): <span id="scaleVal" class="value-tag"></span></label>
-                    <input id="scale" type="range" min="2" max="8" step="1" value="4" />
-                    <p class="muted" style="font-size:0.78rem">Bigger pixels scan more reliably on a distant camera.</p>
-                </div>
-            </div>
+      <!-- 2. Tuning -->
+      <section class="panel">
+        <h2>2 · QR density / error-correction / FPS tuning</h2>
+        <div class="tuning-grid">
+          <div>
+            <label>Payload bytes per frame: <span id="payloadVal" class="value-tag"></span></label>
+            <input id="payload" type="range" min="200" max="2900" step="50" value="1200" />
+            <p class="muted" style="font-size:0.78rem">Higher = fewer frames but denser QR (needs a better camera/light).</p>
+          </div>
+          <div>
+            <label>Error correction</label>
+            <select id="ecc">
+              <option value="L">L — 7% (most capacity)</option>
+              <option value="M" selected>M — 15% (balanced)</option>
+              <option value="Q">Q — 25% (resilient)</option>
+              <option value="H">H — 30% (max resilience)</option>
+            </select>
+            <p class="muted" style="font-size:0.78rem">Higher ECC survives glare/blur but shrinks capacity.</p>
+          </div>
+          <div>
+            <label>Animation speed (FPS): <span id="fpsVal" class="value-tag"></span></label>
+            <input id="fps" type="range" min="1" max="20" step="1" value="8" />
+            <p class="muted" style="font-size:0.78rem">Lower = easier to scan. Higher = faster but risks missed frames.</p>
+          </div>
+          <div>
+            <label>QR module size (px): <span id="scaleVal" class="value-tag"></span></label>
+            <input id="scale" type="range" min="2" max="8" step="1" value="4" />
+            <p class="muted" style="font-size:0.78rem">Bigger pixels scan more reliably on a distant camera.</p>
+          </div>
+        </div>
 
-            <h3>Estimate</h3>
-            <div id="estimate" class="stat muted">Choose a file to see chunk count and transfer time.</div>
-        </section>
+        <h3>Estimate</h3>
+        <div id="estimate" class="stat muted">Choose a file to see chunk count and transfer time.</div>
+      </section>
     </div>
 
     <!-- RIGHT: broadcast stage (sticky, fills the screen) -->
     <div class="col stage">
-        <section class="panel">
-            <h2>3 · Broadcast</h2>
-            <div class="row" style="margin-bottom:14px">
-                <button id="startBtn" disabled>▶ Start broadcasting</button>
-                <button id="stopBtn" class="secondary" disabled>■ Stop</button>
-                <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--text)">
-                    <input id="loopChk" type="checkbox" checked /> Loop (replay so receiver can catch missed frames)
-                </label>
-            </div>
-            <div id="genStatus" class="status hidden" style="margin-bottom:14px"></div>
-            <div class="qr-stage">
-                <canvas id="qrCanvas" width="360" height="360"></canvas>
-                <div id="frameLabel" class="stat muted"></div>
-                <div class="progress"><span id="frameBar"></span></div>
-            </div>
-        </section>
-    </div>
-</main>
+      <section class="panel">
+        <h2>3 · Broadcast</h2>
+        <div class="row" style="margin-bottom:14px">
+          <button id="startBtn" disabled>▶ Start broadcasting</button>
+          <button id="stopBtn" class="secondary" disabled>■ Stop</button>
+          <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--text)">
+            <input id="loopChk" type="checkbox" checked /> Loop (replay so receiver can catch missed frames)
+          </label>
+        </div>
+        <div id="genStatus" class="status hidden" style="margin-bottom:14px"></div>
+        <div class="qr-stage">
+          <canvas id="qrCanvas" width="360" height="360"></canvas>
+          <div id="frameLabel" class="stat muted"></div>
+          <div class="progress"><span id="frameBar"></span></div>
+        </div>
 
-<!-- Vendored libraries (offline) -->
-<script src="vendor/qrcode.min.js"></script>
-<!-- App modules (order matters: helpers before sender) -->
-<script src="app/packet.js"></script>
-<script src="app/crypto.js"></script>
-<script src="app/compress.js"></script>
-<script src="app/sender.js"></script>
+        <!-- Chunk selection grid: mark chunks the receiver already has so the
+             animation only cycles the still-missing ones. -->
+        <div id="chunkPanel" class="hidden">
+          <h3>Chunk status — tap a cell, or drag a rectangle to select a block</h3>
+          <div class="row" style="margin-bottom:8px">
+            <label style="display:flex;align-items:center;gap:8px;margin:0;color:var(--text)">
+              <input id="selectModeChk" type="checkbox" checked /> Drag marks as received (uncheck to un-mark)
+            </label>
+            <span class="spacer"></span>
+            <button id="clearSelBtn" class="secondary" type="button">Clear selection</button>
+          </div>
+          <div id="chunkGridWrap" style="position:relative">
+            <div id="chunkGrid" class="chunkgrid"></div>
+            <div id="marquee" class="marquee hidden"></div>
+          </div>
+          <div id="chunkStat" class="stat muted" style="margin-top:8px"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Vendored libraries (offline) -->
+  <script src="vendor/qrcode.min.js"></script>
+  <!-- App modules (order matters: helpers before sender) -->
+  <script src="app/packet.js"></script>
+  <script src="app/crypto.js"></script>
+  <script src="app/compress.js"></script>
+  <script src="app/sender.js"></script>
 </body>
 </html>
